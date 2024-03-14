@@ -1,6 +1,6 @@
 const readlineSync = require('readline-sync');
 
-// Función para validar numero
+// Función para validar número
 function validarNumero(input) {
   if (isNaN(input)) {
     throw new Error('Error: Debe ingresar un valor numérico.');
@@ -8,7 +8,7 @@ function validarNumero(input) {
   return parseFloat(input);
 }
 
-// Función para validar el s o n
+// Función para validar "S" o "N"
 function validarSN(input) {
   if (input.toUpperCase() !== 'S' && input.toUpperCase() !== 'N') {
     throw new Error('Error: Debe ingresar "S" o "N".');
@@ -16,14 +16,26 @@ function validarSN(input) {
   return input.toUpperCase();
 }
 
-// calcular el subsidio
-function calcularSubsidioEstudio(tipoHijo, salario) {
+// Función para validar estrato
+function validarEstrato(input) {
+  const estrato = parseInt(input);
+  if (isNaN(estrato) || estrato < 1 || estrato > 3) {
+    throw new Error('Error: El estrato debe ser un número entre 1 y 3.');
+  }
+  return estrato;
+}
+
+// Calcular el subsidio para estudios
+function calcularSubsidioEstudio(tipoHijo, salario, numHijos) {
+  if (numHijos === 0) {
+    return 0;
+  }
   const mensaje = `Ingrese el subsidio para hijos de tipo ${tipoHijo} en pesos: `;
   const subsidio = validarNumero(readlineSync.question(mensaje));
   return salario > subsidio ? subsidio : salario;
 }
 
-// calcular el costo total de la nómina
+// Calcular el costo total de la nómina
 function calcularCostoNomina(empleado) {
   const { salario, estrato, sector, extranjero, genero, numHijos } = empleado;
 
@@ -41,20 +53,21 @@ function calcularCostoNomina(empleado) {
     costoTotal += 35000;
   }
 
-  const subsidioPrimaria = calcularSubsidioEstudio('primaria', salario);
-  const subsidioSecundaria = calcularSubsidioEstudio('secundaria', salario);
-  const subsidioUniversidad = calcularSubsidioEstudio('universidad', salario);
+  const subsidioPrimaria = calcularSubsidioEstudio('primaria', salario, numHijos.primaria);
+  const subsidioSecundaria = calcularSubsidioEstudio('secundaria', salario, numHijos.secundaria);
+  const subsidioUniversidad = calcularSubsidioEstudio('universidad', salario, numHijos.universidad);
 
   costoTotal += numHijos.primaria * subsidioPrimaria;
   costoTotal += numHijos.secundaria * subsidioSecundaria;
   costoTotal += numHijos.universidad * subsidioUniversidad;
 
+  let costoSubsidioSecundaria = numHijos.secundaria * subsidioSecundaria;
+
   if (extranjero === 'S') {
-    costoTotal += 2 *  
-      validarNumero(readlineSync.question('Ingrese el costo de un vuelo internacional en pesos: '));
+    costoTotal += 2 * validarNumero(readlineSync.question('Ingrese el costo de un vuelo internacional en pesos: '));
   }
 
-  return costoTotal;
+  return { costoTotal, costoSubsidioSecundaria };
 }
 
 // Función principal
@@ -71,7 +84,7 @@ function main() {
   for (let i = 0; i < numEmpleados; i++) {
     console.log(`\nEmpleado ${i + 1}`);
     const salario = validarNumero(readlineSync.question('Ingrese el salario del empleado en pesos: '));
-    const estrato = parseInt(readlineSync.question('Ingrese el estrato del empleado: '));
+    const estrato = validarEstrato(readlineSync.question('Ingrese el estrato del empleado (1 a 3): '));
     const sector = readlineSync.question('Ingrese el sector del empleado (rural/urbano): ');
     const extranjero = validarSN(readlineSync.question('¿Es extranjero? (S/N): '));
     const genero = readlineSync.question('Ingrese el género del empleado (masculino/femenino): ');
@@ -84,25 +97,23 @@ function main() {
 
     const empleado = { salario, estrato, sector, extranjero, genero, numHijos };
 
-    const costoEmpleado = calcularCostoNomina(empleado);
-    costoTotalNomina += costoEmpleado;
+    const { costoTotal, costoSubsidioSecundaria: subSecundaria } = calcularCostoNomina(empleado);
+    costoTotalNomina += costoTotal;
+    costoSubsidioSecundaria += subSecundaria;
 
     if (genero.toLowerCase() === 'masculino') {
-      costoNominaHombres += costoEmpleado;
+      costoNominaHombres += costoTotal;
     } else {
-      costoNominaMujeres += costoEmpleado;
+      costoNominaMujeres += costoTotal;
     }
 
-    if (costoEmpleado > maxCosto) {
-      maxCosto = costoEmpleado;
+    if (costoTotal > maxCosto) {
+      maxCosto = costoTotal;
       empleadoMasCostoso = `Empleado ${i + 1}`;
     }
 
-    costoSubsidioSecundaria += numHijos.secundaria * subsidioSecundaria;
-
     if (extranjero === 'S') {
-      costoPasajesExtranjeros += 2 *  
-        validarNumero(readlineSync.question('Ingrese el costo de un vuelo internacional en pesos: '));
+      costoPasajesExtranjeros += 2 * validarNumero(readlineSync.question('Ingrese el costo de un vuelo internacional en pesos: '));
     }
   }
 
